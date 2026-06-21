@@ -1,9 +1,16 @@
 {
-    "timeline.forum.category.shared": "a partagé avec vous la catégorie : ",
-    "timeline.forum.message.created": "a posté un nouveau message dans la discussion : ",
-    "timeline.forum.message.updated": "a modifié un message dans la discussion : ",
-    "timeline.forum.subject.created": "a créé une nouvelle discussion : ",
-    "timeline.forum.subject.updated": "a modifié la discussion : ",
-    "timeline.in.forum": "dans le forum",
-    "timeline.of.forum": "du forum"
+  "timeline.forum.category.shared": "shared the category with you: ",
+  "timeline.forum.message.created": "posted a new message in the discussion: ",
+  "timeline.forum.message.updated": "edited a message in the discussion: ",
+  "timeline.forum.subject.created": "created a new discussion: ",
+  "timeline.forum.subject.updated": "edited the discussion: ",
+  "timeline.in.forum": "in the forum",
+  "timeline.of.forum": "from the forum",
+  "forum": "Forum",
+  "forum.category-shared": "Category sharing",
+  "forum.message-created": "New message in the forum",
+  "forum.message-updated": "Modification of a message in the forum",
+  "forum.subject-created": "New forum discussion",
+  "forum.subject-updated": "Modification of a discussion in the forum",
+  "timeline.push.notif.category.shared": "Forum: New category"
 }
