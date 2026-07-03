@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import { api } from '../api';
 import { formatDate, ownerName } from '../utils';
+import { ShareDialog } from './ShareDialog';
 
 /** Écran catégorie : liste des sujets + création + édition du nom de catégorie et des titres de sujet. */
 export function Category() {
@@ -66,10 +67,13 @@ export function Category() {
     },
   });
 
+  const [sharing, setSharing] = useState(false);
+
   const subjects = subjectsQuery.data ?? [];
 
   return (
     <div>
+      {sharing && <ShareDialog catId={catId} onClose={() => setSharing(false)} />}
       <p>
         <Link to="/">← {t('forum.back.to.categories')}</Link>
       </p>
@@ -114,9 +118,14 @@ export function Category() {
           </div>
         )}
         {!creating && !editingCat && (
-          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
-            {t('forum.subject.new', { defaultValue: 'Nouveau sujet' })}
-          </button>
+          <div className="d-flex gap-8">
+            <button type="button" className="btn btn-secondary" onClick={() => setSharing(true)}>
+              {t('forum.category.share', { defaultValue: 'Partager' })}
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+              {t('forum.subject.new', { defaultValue: 'Nouveau sujet' })}
+            </button>
+          </div>
         )}
       </div>
 

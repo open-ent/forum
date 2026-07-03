@@ -28,6 +28,38 @@ export interface Message {
   created?: { $date: string } | string;
 }
 
+// ── Partage (modèle entcore classique) ──────────────────────────────────────
+/** Un niveau de droit (ex. `category.read`) et la liste d'actions concrètes qu'il couvre. */
+export interface ShareAction {
+  name: string[];
+  displayName: string;
+  type: string;
+}
+export interface ShareGroup {
+  id: string;
+  name: string;
+  groupDisplayName?: string | null;
+  structureName?: string | null;
+}
+export interface ShareUser {
+  id: string;
+  username: string;
+  login?: string;
+  profile?: string;
+}
+/** Réponse de `GET /forum/share/json/:id`. `checked` = id -> actions concrètes accordées. */
+export interface ShareJson {
+  actions: ShareAction[];
+  groups: { visibles: ShareGroup[]; checked: Record<string, string[]> };
+  users: { visibles: ShareUser[]; checked: Record<string, string[]> };
+}
+/** Corps de `PUT /forum/share/resource/:id` (batch). */
+export interface ShareBatch {
+  users: Record<string, string[]>;
+  groups: Record<string, string[]>;
+  bookmarks: Record<string, string[]>;
+}
+
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(String(res.status));
   const text = await res.text();
@@ -139,6 +171,19 @@ export const deleteMessage = async (
   });
 };
 
+export const getShare = async (catId: string): Promise<ShareJson> =>
+  json<ShareJson>(await fetch(`/forum/share/json/${catId}`, base));
+
+export const shareResource = async (catId: string, batch: ShareBatch): Promise<void> => {
+  const res = await fetch(`/forum/share/resource/${catId}`, {
+    ...base,
+    method: 'PUT',
+    headers: jsonHeaders,
+    body: JSON.stringify(batch),
+  });
+  if (!res.ok) throw new Error(String(res.status));
+};
+
 export const api = {
   getCategories,
   getCategory,
@@ -153,4 +198,6 @@ export const api = {
   deleteSubject,
   updateMessage,
   deleteMessage,
+  getShare,
+  shareResource,
 };
