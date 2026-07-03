@@ -50,6 +50,9 @@ public class ForumController extends BaseController {
 	private final MessageHelper messageHelper;
 	private EventStore eventStore;
 	private enum ForumEvent { ACCESS }
+	/** IHM par défaut : "react" (nouvelle) ou "angular" (ancienne), piloté par la conf `frontend-ui`.
+	 *  Défaut "angular" tant que la migration React n'a pas la parité (partage, éditeur riche). */
+	private String frontendUi = "angular";
 
 	public ForumController(final String collection, final CategoryService categoryService, final SubjectService subjectService, final MessageService messageService) {
 
@@ -64,6 +67,7 @@ public class ForumController extends BaseController {
 		this.categoryHelper.init(vertx, config, rm, securedActions);
 		this.subjectHelper.init(vertx, config, rm, securedActions);
 		this.messageHelper.init(vertx, config, rm, securedActions);
+		this.frontendUi = "react".equals(config.getString("frontend-ui", "angular")) ? "react" : "angular";
 		eventStore = EventStoreFactory.getFactory().getEventStore(Forum.class.getSimpleName());
 	}
 
@@ -71,7 +75,13 @@ public class ForumController extends BaseController {
 	@Get("")
 	@SecuredAction("forum.view")
 	public void view(HttpServerRequest request) {
-		renderView(request);
+		// Choix de l'IHM (CCTP 51C — migration React) : défaut piloté par la conf `frontend-ui`
+		// (react|angular, défaut angular), override par requête `?ui=react|angular`.
+		// forum.html = IHM AngularJS existante (défaut) ; forum-react.html = nouvelle IHM React.
+		final String uiParam = request.getParam("ui");
+		final String ui = ("react".equals(uiParam) || "angular".equals(uiParam)) ? uiParam : frontendUi;
+		final String view = "react".equals(ui) ? "forum-react.html" : "forum.html";
+		renderView(request, new JsonObject(), view, null);
 
 		// Create event "access to application Forum" and store it, for module "statistics"
 		eventStore.createAndStoreEvent(ForumEvent.ACCESS.name(), request);

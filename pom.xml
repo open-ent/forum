@@ -78,5 +78,14 @@
             <scope>runtime</scope>
             <classifier>fat</classifier>
         </dependency>
+        <!-- CCTP 51C : netty-buffer n'est présent qu'en scope runtime (deps fat) → absent du classpath
+             de COMPILATION où tourne l'annotation-processor entcore (génère Filters.json). Ajouté en
+             `provided` pour débloquer la recompilation sans casser l'apt. Aucune montée de version. -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-buffer</artifactId>
+            <version>4.1.107.Final</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 </project>
