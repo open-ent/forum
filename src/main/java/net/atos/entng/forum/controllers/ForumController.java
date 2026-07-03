@@ -51,8 +51,10 @@ public class ForumController extends BaseController {
 	private EventStore eventStore;
 	private enum ForumEvent { ACCESS }
 	/** IHM par défaut : "react" (nouvelle) ou "angular" (ancienne), piloté par la conf `frontend-ui`.
-	 *  Défaut "angular" tant que la migration React n'a pas la parité (partage, éditeur riche). */
-	private String frontendUi = "angular";
+	 *  Défaut "react" : la migration React a atteint la parité (partage, éditeur riche, renommage).
+	 *  NB : la génération springboard retire les clés de conf inconnues (dont `frontend-ui`) →
+	 *  c'est ce défaut Java qui pilote réellement ; repli Angular via `?ui=angular`. */
+	private String frontendUi = "react";
 
 	public ForumController(final String collection, final CategoryService categoryService, final SubjectService subjectService, final MessageService messageService) {
 
@@ -67,7 +69,7 @@ public class ForumController extends BaseController {
 		this.categoryHelper.init(vertx, config, rm, securedActions);
 		this.subjectHelper.init(vertx, config, rm, securedActions);
 		this.messageHelper.init(vertx, config, rm, securedActions);
-		this.frontendUi = "react".equals(config.getString("frontend-ui", "angular")) ? "react" : "angular";
+		this.frontendUi = "angular".equals(config.getString("frontend-ui", "react")) ? "angular" : "react";
 		eventStore = EventStoreFactory.getFactory().getEventStore(Forum.class.getSimpleName());
 	}
 
@@ -75,9 +77,9 @@ public class ForumController extends BaseController {
 	@Get("")
 	@SecuredAction("forum.view")
 	public void view(HttpServerRequest request) {
-		// Choix de l'IHM (CCTP 51C — migration React) : défaut piloté par la conf `frontend-ui`
-		// (react|angular, défaut angular), override par requête `?ui=react|angular`.
-		// forum.html = IHM AngularJS existante (défaut) ; forum-react.html = nouvelle IHM React.
+		// Choix de l'IHM (CCTP 51C — migration React) : défaut React (parité atteinte),
+		// override par requête `?ui=react|angular`.
+		// forum-react.html = IHM React (défaut) ; forum.html = ancienne IHM AngularJS (repli).
 		final String uiParam = request.getParam("ui");
 		final String ui = ("react".equals(uiParam) || "angular".equals(uiParam)) ? uiParam : frontendUi;
 		final String view = "react".equals(ui) ? "forum-react.html" : "forum.html";
