@@ -6,7 +6,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { formatDate, ownerName } from '../utils';
 
-/** Écran catégorie : liste des sujets + création d'un sujet. */
+/** Écran catégorie : liste des sujets + création + édition du nom de catégorie et des titres de sujet. */
 export function Category() {
   const { catId = '' } = useParams();
   const { t } = useTranslation(['forum', 'common']);
@@ -43,6 +43,29 @@ export function Category() {
     if (title.trim()) createMut.mutate();
   };
 
+  // Édition du NOM de la catégorie (icône conservée).
+  const [editingCat, setEditingCat] = useState(false);
+  const [catName, setCatName] = useState('');
+  const renameCatMut = useMutation({
+    mutationFn: () =>
+      api.updateCategory(catId, { name: catName.trim(), icon: categoryQuery.data?.icon ?? '' }),
+    onSuccess: () => {
+      setEditingCat(false);
+      qc.invalidateQueries({ queryKey: ['forum', 'category', catId] });
+    },
+  });
+
+  // Édition du TITRE d'un sujet.
+  const [editingSub, setEditingSub] = useState<string | null>(null);
+  const [subTitle, setSubTitle] = useState('');
+  const renameSubMut = useMutation({
+    mutationFn: (subId: string) => api.updateSubject(catId, subId, { title: subTitle.trim() }),
+    onSuccess: () => {
+      setEditingSub(null);
+      qc.invalidateQueries({ queryKey: subjectsKey });
+    },
+  });
+
   const subjects = subjectsQuery.data ?? [];
 
   return (
@@ -51,8 +74,46 @@ export function Category() {
         <Link to="/">← {t('forum.back.to.categories')}</Link>
       </p>
       <div className="d-flex align-items-center justify-content-between mb-16">
-        <h1 className="m-0">{categoryQuery.data?.name ?? t('forum.category')}</h1>
-        {!creating && (
+        {editingCat ? (
+          <form
+            className="d-flex gap-8 flex-grow-1"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (catName.trim()) renameCatMut.mutate();
+            }}
+          >
+            <input
+              type="text"
+              className="form-control"
+              style={{ maxWidth: 420 }}
+              value={catName}
+              onChange={(e) => setCatName(e.target.value)}
+              aria-label={t('forum.category.edit', { defaultValue: 'Renommer la catégorie' })}
+              autoFocus
+            />
+            <button type="submit" className="btn btn-primary" disabled={!catName.trim() || renameCatMut.isPending}>
+              {t('forum.category.edit.finish')}
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={() => setEditingCat(false)}>
+              {t('forum.category.share.return')}
+            </button>
+          </form>
+        ) : (
+          <div className="d-flex align-items-center gap-12">
+            <h1 className="m-0">{categoryQuery.data?.name ?? t('forum.category')}</h1>
+            <button
+              type="button"
+              className="btn btn-link p-0"
+              onClick={() => {
+                setCatName(categoryQuery.data?.name ?? '');
+                setEditingCat(true);
+              }}
+            >
+              {t('forum.category.edit', { defaultValue: 'Renommer' })}
+            </button>
+          </div>
+        )}
+        {!creating && !editingCat && (
           <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
             {t('forum.subject.new', { defaultValue: 'Nouveau sujet' })}
           </button>
@@ -95,38 +156,78 @@ export function Category() {
       <ul className="list-unstyled">
         {subjects.map((sub) => (
           <li key={sub._id} className="py-12 border-bottom d-flex justify-content-between align-items-start">
-            <div>
-              <Link
-                to={`/view/${catId}/subject/${sub._id}`}
-                className="fw-bold"
-                style={{ fontSize: 17 }}
+            {editingSub === sub._id ? (
+              <form
+                className="d-flex gap-8 flex-grow-1"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (subTitle.trim()) renameSubMut.mutate(sub._id);
+                }}
               >
-                {sub.title}
-              </Link>
-              <div className="text-muted" style={{ fontSize: 13 }}>
-                {ownerName(sub.owner) && (
-                  <>
-                    {t('forum.by')}
-                    {ownerName(sub.owner)} ·{' '}
-                  </>
-                )}
-                {formatDate(sub.modified ?? sub.created)}
-              </div>
-            </div>
-            <button
-              type="button"
-              className="btn btn-link p-0 text-danger"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    t('forum.confirm.delete.subject', { defaultValue: 'Supprimer cette discussion ?' }),
-                  )
-                )
-                  deleteSubjectMut.mutate(sub._id);
-              }}
-            >
-              {t('forum.delete', { defaultValue: 'Supprimer' })}
-            </button>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ maxWidth: 420 }}
+                  value={subTitle}
+                  onChange={(e) => setSubTitle(e.target.value)}
+                  aria-label={t('forum.subject.edit.title', { defaultValue: 'Renommer le sujet' })}
+                  autoFocus
+                />
+                <button type="submit" className="btn btn-primary" disabled={!subTitle.trim() || renameSubMut.isPending}>
+                  {t('forum.category.edit.finish')}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingSub(null)}>
+                  {t('forum.category.share.return')}
+                </button>
+              </form>
+            ) : (
+              <>
+                <div>
+                  <Link
+                    to={`/view/${catId}/subject/${sub._id}`}
+                    className="fw-bold"
+                    style={{ fontSize: 17 }}
+                  >
+                    {sub.title}
+                  </Link>
+                  <div className="text-muted" style={{ fontSize: 13 }}>
+                    {ownerName(sub.owner) && (
+                      <>
+                        {t('forum.by')}
+                        {ownerName(sub.owner)} ·{' '}
+                      </>
+                    )}
+                    {formatDate(sub.modified ?? sub.created)}
+                  </div>
+                </div>
+                <div className="d-flex gap-8">
+                  <button
+                    type="button"
+                    className="btn btn-link p-0"
+                    onClick={() => {
+                      setSubTitle(sub.title);
+                      setEditingSub(sub._id);
+                    }}
+                  >
+                    {t('forum.subject.edit', { defaultValue: 'Modifier' })}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 text-danger"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          t('forum.confirm.delete.subject', { defaultValue: 'Supprimer cette discussion ?' }),
+                        )
+                      )
+                        deleteSubjectMut.mutate(sub._id);
+                    }}
+                  >
+                    {t('forum.delete', { defaultValue: 'Supprimer' })}
+                  </button>
+                </div>
+              </>
+            )}
           </li>
         ))}
       </ul>
