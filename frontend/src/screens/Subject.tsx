@@ -1,16 +1,11 @@
+import { Editor, EditorRef } from '@open-ent/react/editor';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 
 import { api } from '../api';
 import { formatDate, ownerName } from '../utils';
-
-/** Texte -> HTML simple (le contenu message est stocké en HTML). */
-function toHtml(s: string): string {
-  const esc = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return `<p>${esc.replace(/\n/g, '<br />')}</p>`;
-}
 
 /** Écran sujet : fil de messages + réponse + édition/suppression de message. */
 export function Subject() {
@@ -27,19 +22,31 @@ export function Subject() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: messagesKey });
 
-  const [reply, setReply] = useState('');
+  // Éditeur de réponse (non contrôlé, lu via ref). On le remonte via `replyKey`
+  // après envoi pour repartir d'un contenu vide.
+  const replyRef = useRef<EditorRef>(null);
+  const [replyKey, setReplyKey] = useState(0);
+  const [replyEmpty, setReplyEmpty] = useState(true);
   const replyMut = useMutation({
-    mutationFn: () => api.postMessage(catId, subId, { content: toHtml(reply.trim()) }),
+    mutationFn: () => {
+      const content = (replyRef.current?.getContent('html') as string) ?? '';
+      return api.postMessage(catId, subId, { content });
+    },
     onSuccess: () => {
-      setReply('');
+      setReplyKey((k) => k + 1);
+      setReplyEmpty(true);
       invalidate();
     },
   });
 
+  // Éditeur d'édition (monté seulement pour le message en cours d'édition).
+  const editRef = useRef<EditorRef>(null);
   const [editing, setEditing] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
   const editMut = useMutation({
-    mutationFn: (msgId: string) => api.updateMessage(catId, subId, msgId, { content: toHtml(editText.trim()) }),
+    mutationFn: (msgId: string) => {
+      const content = (editRef.current?.getContent('html') as string) ?? '';
+      return api.updateMessage(catId, subId, msgId, { content });
+    },
     onSuccess: () => {
       setEditing(null);
       invalidate();
@@ -52,7 +59,7 @@ export function Subject() {
 
   const onReply = (e: FormEvent) => {
     e.preventDefault();
-    if (reply.trim()) replyMut.mutate();
+    if (!replyEmpty) replyMut.mutate();
   };
 
   const messages = messagesQuery.data ?? [];
@@ -89,13 +96,7 @@ export function Subject() {
                   <button
                     type="button"
                     className="btn btn-link p-0"
-                    onClick={() => {
-                      // repart du texte brut (sans balises) pour l'édition
-                      const div = document.createElement('div');
-                      div.innerHTML = msg.content ?? '';
-                      setEditText(div.textContent ?? '');
-                      setEditing(msg._id);
-                    }}
+                    onClick={() => setEditing(msg._id)}
                   >
                     {t('forum.subject.edit', { defaultValue: 'Modifier' })}
                   </button>
@@ -115,17 +116,18 @@ export function Subject() {
 
             {editing === msg._id ? (
               <div>
-                <textarea
-                  className="form-control mb-8"
-                  rows={3}
-                  value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
+                <Editor
+                  id={`forum-edit-${msg._id}`}
+                  ref={editRef}
+                  content={msg.content ?? ''}
+                  mode="edit"
+                  visibility="protected"
                 />
-                <div className="d-flex gap-8">
+                <div className="d-flex gap-8 mt-8">
                   <button
                     type="button"
                     className="btn btn-primary"
-                    disabled={!editText.trim() || editMut.isPending}
+                    disabled={editMut.isPending}
                     onClick={() => editMut.mutate(msg._id)}
                   >
                     {t('forum.category.edit.finish')}
@@ -136,7 +138,7 @@ export function Subject() {
                 </div>
               </div>
             ) : (
-              <div dangerouslySetInnerHTML={{ __html: msg.content ?? '' }} />
+              <Editor content={msg.content ?? ''} mode="read" variant="ghost" />
             )}
           </li>
         ))}
@@ -147,15 +149,18 @@ export function Subject() {
         <label htmlFor="forum-reply" className="fw-bold d-block mb-8">
           {t('forum.reply', { defaultValue: 'Répondre' })}
         </label>
-        <textarea
-          id="forum-reply"
-          className="form-control mb-8"
-          rows={3}
-          value={reply}
-          onChange={(e) => setReply(e.target.value)}
-          placeholder={t('forum.subject.message', { defaultValue: 'Votre message…' })}
-        />
-        <button type="submit" className="btn btn-primary" disabled={!reply.trim() || replyMut.isPending}>
+        <div className="mb-8">
+          <Editor
+            key={replyKey}
+            id="forum-reply"
+            ref={replyRef}
+            content=""
+            mode="edit"
+            visibility="protected"
+            onContentChange={({ editor }) => setReplyEmpty(editor.isEmpty)}
+          />
+        </div>
+        <button type="submit" className="btn btn-primary" disabled={replyEmpty || replyMut.isPending}>
           {t('forum.reply', { defaultValue: 'Répondre' })}
         </button>
         {(replyMut.isError || editMut.isError || deleteMut.isError) && (
