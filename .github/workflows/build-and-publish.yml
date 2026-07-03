@@ -123,6 +123,11 @@ jobs:
           </settings>
           EOF
       - name: Publish fat JAR to GitHub Packages
+        # GitHub Packages refuse d'écraser une version existante (409 Conflict) : sur re-tag d'une
+        # même version -patched, le fat mod est déjà publié -> on tolère l'échec (le job reste vert).
+        # Pour republier un contenu FRAIS d'une version inchangée : supprimer d'abord la version
+        # (API delete:packages, hors GITHUB_TOKEN Actions) puis rejouer. CCTP 51C — CI publish.
+        continue-on-error: true
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
