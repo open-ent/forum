@@ -6,6 +6,26 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { formatDate, ownerName } from '../utils';
 
+/** Sujets d'une catégorie, affichés sous celle-ci (parité Angular : nom, échanges, activité). */
+function CategorySubjects({ catId }: { catId: string }) {
+  const { t } = useTranslation(['forum', 'common']);
+  const { data } = useQuery({ queryKey: ['forum', 'subjects', catId], queryFn: () => api.getSubjects(catId) });
+  const subjects = data ?? [];
+  if (subjects.length === 0) return null;
+  return (
+    <ul className="list-unstyled ms-16 mt-8 mb-0">
+      {subjects.map((s) => (
+        <li key={s._id} className="py-4" style={{ fontSize: 14 }}>
+          <Link to={`/view/${catId}/subject/${s._id}`}>{s.title}</Link>{' '}
+          <span className="text-muted">
+            · {s.nbMessages ?? 0} {t('forum.exchanges', { defaultValue: 'échange(s)' })} · {formatDate(s.modified ?? s.created)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** Écran d'accueil : liste des catégories + création d'une catégorie. */
 export function Categories() {
   const { t } = useTranslation(['forum', 'common']);
@@ -103,6 +123,7 @@ export function Categories() {
                 )}
                 {formatDate(cat.modified ?? cat.created)}
               </div>
+              <CategorySubjects catId={cat._id} />
             </div>
             <button
               type="button"
