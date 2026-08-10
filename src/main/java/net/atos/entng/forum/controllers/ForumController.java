@@ -50,10 +50,11 @@ public class ForumController extends BaseController {
 	private final MessageHelper messageHelper;
 	private EventStore eventStore;
 	private enum ForumEvent { ACCESS }
-	/** IHM par défaut : "react" (nouvelle) ou "angular" (ancienne), piloté par la conf `frontend-ui`.
+	/** IHM par défaut : "react" (nouvelle) ou "angular" (ancienne), pilotée par la conf `frontend-ui`
+	 *  (bloc du module dans ent-core.yaml, alimentée par FRONTEND_UI_DEFAULT).
 	 *  Défaut "react" : la migration React a atteint la parité (partage, éditeur riche, renommage).
-	 *  NB : la génération springboard retire les clés de conf inconnues (dont `frontend-ui`) →
-	 *  c'est ce défaut Java qui pilote réellement ; repli Angular via `?ui=angular`. */
+	 *  NB : launcher-next conserve la clé `frontend-ui` (bloc `config:` stocké verbatim) ; le fallback
+	 *  Java "react" ne s'applique que si la conf est absente. Repli Angular via `?ui=angular`. */
 	private String frontendUi = "react";
 
 	public ForumController(final String collection, final CategoryService categoryService, final SubjectService subjectService, final MessageService messageService) {
