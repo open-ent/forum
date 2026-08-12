@@ -29,7 +29,12 @@
     </repositories>
 
     <properties>
-	<entcore.version>6.14.9</entcore.version>
+	<!-- La plateforme tourne les modules org.entcore~*~6.14.9-patched (cf. ent-core.yaml du
+	     springboard). Compiler forum contre l'entcore UPSTREAM produit un jar qui répond 200
+	     sur ses API mais 500 à corps vide sur ses vues, sans aucune trace serveur : le
+	     classloader du module n'a pas de binding slf4j, l'exception de rendu est avalée.
+	     Constaté le 2026-08-10 sur le jar 2.1.3-patched. Aligné sur calendar/pages/rbs. -->
+	<entcore.version>6.14.9-patched</entcore.version>
 	<modMongoVersion>4.1.1</modMongoVersion>
     </properties>
 
