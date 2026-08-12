@@ -56,6 +56,17 @@ jobs:
           mkdir -p ../src/main/resources/public
           cp -r dist/public/. ../src/main/resources/public/
 
+      # Fat-mod « dual » : le module sert l'IHM AngularJS OU React selon la conf `frontend-ui`
+      # (override `?ui=react|angular`). Si une seule des deux est dans le jar, la moitie des URL
+      # rend un 500 en prod. On echoue donc ICI plutot qu'au runtime.
+      - name: Verify build outputs (IHM Angular + React)
+        run: |
+          test -f src/main/resources/view/forum.html         || { echo "::error::view/forum.html manquant (IHM AngularJS)"; exit 1; }
+          test -f src/main/resources/view/forum-react.html   || { echo "::error::view/forum-react.html manquant (IHM React)"; exit 1; }
+          test -f src/main/resources/public/index.js         || { echo "::error::public/index.js manquant (bundle React)"; exit 1; }
+          test -f src/main/resources/public/index.css        || { echo "::error::public/index.css manquant (feuille de style React)"; exit 1; }
+          test -f src/main/resources/public/js/behaviours.js || { echo "::error::public/js/behaviours.js manquant (behaviours AngularJS)"; exit 1; }
+
       - name: Upload frontend assets
         uses: actions/upload-artifact@v4
         with:
