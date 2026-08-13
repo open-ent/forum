@@ -49,8 +49,8 @@
         <div ng-repeat="cat in categories.all">
             <li ng-class="{ selected: cat.selected }">
                 <div class="tiny-illustration">
-                    <img skin-src="/img/illustrations/forum.svg" ng-if="(cat.icon === undefined)" class="cell" />
-                    <img ng-src="[[cat.icon]]?thumbnail=120x120" ng-if="cat.icon !== undefined" class="cell" />
+                    <img skin-src="/img/illustrations/forum.svg" ng-if="!cat.icon" class="cell" />
+                    <img ng-src="[[cat.icon]]?thumbnail=120x120" ng-if="cat.icon" class="cell" />
                 </div>
                 <div class="content">
                     <resource-right ng-class="{'to-hide-but-remain':getSelectedSubjects().length > 0}" name="contrib" resource="cat">
