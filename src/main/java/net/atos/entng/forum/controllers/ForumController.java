@@ -42,6 +42,8 @@ import org.vertx.java.core.http.RouteMatcher;
 
 
 import java.util.Map;
+import org.entcore.common.utils.OpeningHoursGuard;
+import org.entcore.common.utils.SpaceOpeningHours;
 
 public class ForumController extends BaseController {
 
@@ -165,7 +167,9 @@ public class ForumController extends BaseController {
 	@Post("/category/:id/subjects")
 	@SecuredAction(value = "category.contrib", type = ActionType.RESOURCE)
 	public void createSubject(HttpServerRequest request) {
-		subjectHelper.create(request);
+		// Horaires d'utilisation : hors plage, un élève relit le forum mais n'y écrit plus
+		// (403 opening.hours.closed). Les autres profils ne sont jamais gardés.
+		OpeningHoursGuard.ifWriteAllowed(eb, request, SpaceOpeningHours.SCOPE_FORUM, user -> subjectHelper.create(request));
 	}
 
 	@Get("/category/:id/subject/:subjectid")
@@ -178,7 +182,7 @@ public class ForumController extends BaseController {
 	@SecuredAction(value = "category.publish", type = ActionType.RESOURCE)
 	@ResourceFilter(SubjectMessageMine.class)
 	public void updateSubject(HttpServerRequest request) {
-		subjectHelper.update(request);
+		OpeningHoursGuard.ifWriteAllowed(eb, request, SpaceOpeningHours.SCOPE_FORUM, user -> subjectHelper.update(request));
 	}
 
 	@Delete("/category/:id/subject/:subjectid")
@@ -198,7 +202,7 @@ public class ForumController extends BaseController {
 	@Post("/category/:id/subject/:subjectid/messages")
 	@SecuredAction(value = "category.contrib", type = ActionType.RESOURCE)
 	public void createMessage(HttpServerRequest request) {
-		messageHelper.create(request);
+		OpeningHoursGuard.ifWriteAllowed(eb, request, SpaceOpeningHours.SCOPE_FORUM, user -> messageHelper.create(request));
 	}
 
 	@Get("/category/:id/subject/:subjectid/message/:messageid")
@@ -211,7 +215,7 @@ public class ForumController extends BaseController {
 	@SecuredAction(value = "category.publish", type = ActionType.RESOURCE)
 	@ResourceFilter(ForumMessageMine.class)
 	public void updateMessage(HttpServerRequest request) {
-		messageHelper.update(request);
+		OpeningHoursGuard.ifWriteAllowed(eb, request, SpaceOpeningHours.SCOPE_FORUM, user -> messageHelper.update(request));
 	}
 
 	@Delete("/category/:id/subject/:subjectid/message/:messageid")
