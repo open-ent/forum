@@ -154,7 +154,9 @@ jobs:
           # est détaché (déclenchement manuel, tag) et laisse SCM-Branch: UNKNOWN ; les variables
           # GitHub sont fiables dans tous les cas. Préventif ici : le jar 2.1.3-patched publié le
           # 2026-07-24 a bien sa branche, mais uniquement parce qu'il venait d'un push de branche.
-          mvn clean package -DskipTests -B -Dentcore.version="$ENTCORE_EFF" \
+          # -Dmaven.test.skip=true (pas -DskipTests) : évite la compilation des tests, qui crashe
+          # sous JDK 21 via maven-scala-plugin:2.15.2 hérité d'app-parent (testCompile scala).
+          mvn clean package -Dmaven.test.skip=true -B -Dentcore.version="$ENTCORE_EFF" \
             -DbuildNumber="${GITHUB_SHA::8}" -DscmBranch="${GITHUB_REF_NAME}"
         env:
           ENTCORE_VERSION: ${{ github.event.inputs.entcore_version }}
