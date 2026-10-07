@@ -42,6 +42,8 @@ import org.vertx.java.core.http.RouteMatcher;
 
 
 import java.util.Map;
+import org.entcore.common.utils.OpeningHoursGuard;
+import org.entcore.common.utils.SpaceOpeningHours;
 
 public class ForumController extends BaseController {
 
@@ -50,6 +52,12 @@ public class ForumController extends BaseController {
 	private final MessageHelper messageHelper;
 	private EventStore eventStore;
 	private enum ForumEvent { ACCESS }
+	/** IHM par défaut : "react" (nouvelle) ou "angular" (ancienne), pilotée par la conf `frontend-ui`
+	 *  (bloc du module dans ent-core.yaml, alimentée par FRONTEND_UI_DEFAULT).
+	 *  Défaut "react" : la migration React a atteint la parité (partage, éditeur riche, renommage).
+	 *  NB : launcher-next conserve la clé `frontend-ui` (bloc `config:` stocké verbatim) ; le fallback
+	 *  Java "react" ne s'applique que si la conf est absente. Repli Angular via `?ui=angular`. */
+	private String frontendUi = "react";
 
 	public ForumController(final String collection, final CategoryService categoryService, final SubjectService subjectService, final MessageService messageService) {
 
@@ -64,6 +72,7 @@ public class ForumController extends BaseController {
 		this.categoryHelper.init(vertx, config, rm, securedActions);
 		this.subjectHelper.init(vertx, config, rm, securedActions);
 		this.messageHelper.init(vertx, config, rm, securedActions);
+		this.frontendUi = "angular".equals(config.getString("frontend-ui", "react")) ? "angular" : "react";
 		eventStore = EventStoreFactory.getFactory().getEventStore(Forum.class.getSimpleName());
 	}
 
@@ -71,7 +80,13 @@ public class ForumController extends BaseController {
 	@Get("")
 	@SecuredAction("forum.view")
 	public void view(HttpServerRequest request) {
-		renderView(request);
+		// Choix de l'IHM (CCTP 51C — migration React) : défaut React (parité atteinte),
+		// override par requête `?ui=react|angular`.
+		// forum-react.html = IHM React (défaut) ; forum.html = ancienne IHM AngularJS (repli).
+		final String uiParam = request.getParam("ui");
+		final String ui = ("react".equals(uiParam) || "angular".equals(uiParam)) ? uiParam : frontendUi;
+		final String view = "react".equals(ui) ? "forum-react.html" : "forum.html";
+		renderView(request, new JsonObject(), view, null);
 
 		// Create event "access to application Forum" and store it, for module "statistics"
 		eventStore.createAndStoreEvent(ForumEvent.ACCESS.name(), request);
@@ -152,7 +167,9 @@ public class ForumController extends BaseController {
 	@Post("/category/:id/subjects")
 	@SecuredAction(value = "category.contrib", type = ActionType.RESOURCE)
 	public void createSubject(HttpServerRequest request) {
-		subjectHelper.create(request);
+		// Horaires d'utilisation : hors plage, un élève relit le forum mais n'y écrit plus
+		// (403 opening.hours.closed). Les autres profils ne sont jamais gardés.
+		OpeningHoursGuard.ifWriteAllowed(eb, request, SpaceOpeningHours.SCOPE_FORUM, user -> subjectHelper.create(request));
 	}
 
 	@Get("/category/:id/subject/:subjectid")
@@ -165,7 +182,7 @@ public class ForumController extends BaseController {
 	@SecuredAction(value = "category.publish", type = ActionType.RESOURCE)
 	@ResourceFilter(SubjectMessageMine.class)
 	public void updateSubject(HttpServerRequest request) {
-		subjectHelper.update(request);
+		OpeningHoursGuard.ifWriteAllowed(eb, request, SpaceOpeningHours.SCOPE_FORUM, user -> subjectHelper.update(request));
 	}
 
 	@Delete("/category/:id/subject/:subjectid")
@@ -185,7 +202,7 @@ public class ForumController extends BaseController {
 	@Post("/category/:id/subject/:subjectid/messages")
 	@SecuredAction(value = "category.contrib", type = ActionType.RESOURCE)
 	public void createMessage(HttpServerRequest request) {
-		messageHelper.create(request);
+		OpeningHoursGuard.ifWriteAllowed(eb, request, SpaceOpeningHours.SCOPE_FORUM, user -> messageHelper.create(request));
 	}
 
 	@Get("/category/:id/subject/:subjectid/message/:messageid")
@@ -198,7 +215,7 @@ public class ForumController extends BaseController {
 	@SecuredAction(value = "category.publish", type = ActionType.RESOURCE)
 	@ResourceFilter(ForumMessageMine.class)
 	public void updateMessage(HttpServerRequest request) {
-		messageHelper.update(request);
+		OpeningHoursGuard.ifWriteAllowed(eb, request, SpaceOpeningHours.SCOPE_FORUM, user -> messageHelper.update(request));
 	}
 
 	@Delete("/category/:id/subject/:subjectid/message/:messageid")

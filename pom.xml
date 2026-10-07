@@ -4,91 +4,116 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <modelVersion>4.0.0</modelVersion>
 
-  <parent>
-    <groupId>io.edifice</groupId>
-    <artifactId>app-parent</artifactId>
-    <version>1.2.1</version>
-  </parent>
-  <groupId>net.atos</groupId>
-  <artifactId>forum</artifactId>
-  <version>2.2.5</version>
-  <scm>
-    <connection>scm:git:https://github.com/OPEN-ENT-NG/forum.git</connection>
-    <developerConnection>scm:git:https://github.com/OPEN-ENT-NG/forum.git</developerConnection>
-    <url>https://github.com/OPEN-ENT-NG/forum</url>
-  </scm>
-  <repositories>
-    <repository>
-      <id>ode</id>
-      <name>ODE Repository</name>
-      <url>https://maven.opendigitaleducation.com/nexus/content/groups/public</url>
-    </repository>
-  </repositories>
-  <properties>
-    <entcore.version>6.16.11</entcore.version>
-    <modMongoVersion>4.2.0</modMongoVersion>
-    <entCoreLibsVersion>6.16.4</entCoreLibsVersion>
-    <entCoreVersion>6.16.11</entCoreVersion>
-    <modJsonSchemaValidatorVersion>2.2.0</modJsonSchemaValidatorVersion>
-  </properties>
-  <dependencies>
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-core</artifactId>
-      <version>${vertxVersion}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
-      <version>${jacksonDatabindVersion}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.entcore</groupId>
-      <artifactId>tests</artifactId>
-      <version>${entcore.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.gatling.highcharts</groupId>
-      <artifactId>gatling-charts-highcharts</artifactId>
-      <version>${gatlingHighchartsVersion}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>mod-mongo-persistor</artifactId>
-      <version>${modMongoVersion}</version>
-      <scope>runtime</scope>
-      <classifier>fat</classifier>
-    </dependency>
-    <dependency>
-      <groupId>org.entcore</groupId>
-      <artifactId>workspace</artifactId>
-      <version>${entcore.version}</version>
-      <scope>runtime</scope>
-      <classifier>fat</classifier>
-    </dependency>
-    <dependency>
-      <groupId>org.entcore</groupId>
-      <artifactId>session</artifactId>
-      <version>${entCoreLibsVersion}</version>
-      <scope>runtime</scope>
-      <classifier>fat</classifier>
-    </dependency>
-    <dependency>
-      <groupId>org.entcore</groupId>
-      <artifactId>common</artifactId>
-      <version>${entCoreLibsVersion}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.opendigitaleducation</groupId>
-      <artifactId>mod-json-schema-validator</artifactId>
-      <version>${modJsonSchemaValidatorVersion}</version>
-      <scope>runtime</scope>
-      <classifier>fat</classifier>
-    </dependency>
-  </dependencies>
+    <parent>
+        <groupId>io.edifice</groupId>
+        <artifactId>app-parent</artifactId>
+        <version>1.2.1</version>
+    </parent>
+
+    <groupId>net.atos</groupId>
+    <artifactId>forum</artifactId>
+    <version>2.2.5-patched</version>
+
+    <scm>
+        <connection>scm:git:https://github.com/OPEN-ENT-NG/forum.git</connection>
+        <developerConnection>scm:git:https://github.com/OPEN-ENT-NG/forum.git</developerConnection>
+        <url>https://github.com/OPEN-ENT-NG/forum</url>
+    </scm>
+
+    <repositories>
+        <repository>
+            <id>ode</id>
+            <name>ODE Repository</name>
+            <url>https://maven.opendigitaleducation.com/nexus/content/groups/public</url>
+        </repository>
+      <repository>
+        <id>pt-releases</id>
+        <name>rct-nexus maven-releases (entcore-libs patchées)</name>
+        <url>https://rct-nexus.tech.fr/repository/maven-releases/</url>
+      </repository>
+    </repositories>
+
+    <properties>
+	<!-- La plateforme tourne les modules org.entcore~*~6.14.9-patched (cf. ent-core.yaml du
+	     springboard). Compiler forum contre l'entcore UPSTREAM produit un jar qui répond 200
+	     sur ses API mais 500 à corps vide sur ses vues, sans aucune trace serveur : le
+	     classloader du module n'a pas de binding slf4j, l'exception de rendu est avalée.
+	     Constaté le 2026-08-10 sur le jar 2.1.3-patched. Aligné sur calendar/pages/rbs. -->
+	<entcore.version>6.16.14-patched</entcore.version>
+	<entCoreLibsVersion>6.16.8-patched</entCoreLibsVersion>
+	<modMongoVersion>4.1.1</modMongoVersion>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+            <version>${vertxVersion}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jacksonDatabindVersion}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.entcore</groupId>
+            <artifactId>common</artifactId>
+            <version>${entCoreLibsVersion}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.gatling.highcharts</groupId>
+            <artifactId>gatling-charts-highcharts</artifactId>
+            <version>${gatlingHighchartsVersion}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>mod-mongo-persistor</artifactId>
+            <version>${modMongoVersion}</version>
+            <scope>runtime</scope>
+            <classifier>fat</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.entcore</groupId>
+            <artifactId>workspace</artifactId>
+            <version>${entcore.version}</version>
+            <scope>runtime</scope>
+            <classifier>fat</classifier>
+        </dependency>
+        <!-- CCTP 51C : netty-buffer n'est présent qu'en scope runtime (deps fat) → absent du classpath
+             de COMPILATION où tourne l'annotation-processor entcore (génère Filters.json). Ajouté en
+             `provided` pour débloquer la recompilation sans casser l'apt. Aucune montée de version. -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-buffer</artifactId>
+            <version>4.1.107.Final</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <profiles>
+        <!--
+            org.entcore:tests ne fournit QUE les scénarios Gatling/Scala (src/test/scala/**),
+            jamais joués en CI. Depuis le 08/09/2026, le module `tests` d'entcore est exclu de la
+            publication du fork (open-ent/entcore-v2, commit 275a060 : maven-scala-plugin 2.15.2 ne
+            compile plus Scala 2.12 sous JDK 21), donc org.entcore:tests:*-patched n'existe plus.
+            Maven résout les dépendances de portée `test` même avec -Dmaven.test.skip=true : laissée
+            dans <dependencies>, elle faisait échouer `mvn package` (donc toute la CI).
+            `mvn -Pgatling-it ...` pour la réactiver le jour où l'artefact sera republié.
+        -->
+        <profile>
+            <id>gatling-it</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.entcore</groupId>
+                    <artifactId>tests</artifactId>
+                    <version>${entcore.version}</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>
