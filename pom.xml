@@ -40,7 +40,7 @@
 	     classloader du module n'a pas de binding slf4j, l'exception de rendu est avalée.
 	     Constaté le 2026-08-10 sur le jar 2.1.3-patched. Aligné sur calendar/pages/rbs. -->
 	<entcore.version>6.16.14-patched</entcore.version>
-	<entCoreLibsVersion>6.16.7-patched</entCoreLibsVersion>
+	<entCoreLibsVersion>6.16.8-patched</entCoreLibsVersion>
 	<modMongoVersion>4.1.1</modMongoVersion>
     </properties>
 
