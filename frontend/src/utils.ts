@@ -1,3 +1,5 @@
+import { dateLocale } from './locale';
+
 /** Fonctions pures du forum (testables). */
 
 /** Extrait une date ISO d'un champ ENT (`{$date}` ou chaîne) puis la formate jj/mm/aaaa. */
@@ -12,7 +14,7 @@ export function formatDate(d?: { $date: string } | string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime())
     ? ''
-    : date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    : date.toLocaleDateString(dateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 /** Nom d'affichage d'un propriétaire, avec repli. */
