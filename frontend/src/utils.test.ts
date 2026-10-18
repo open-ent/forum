@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { categoryIcon, formatDate, ownerName, toIso } from './utils';
+import { categoryIcon, formatDate, ownerName, sortMessages, toIso } from './utils';
 
 describe('forum utils (migration React CCTP 51C)', () => {
   test('toIso extrait la date de `{$date}` ou d’une chaîne', () => {
@@ -25,5 +25,16 @@ describe('forum utils (migration React CCTP 51C)', () => {
     expect(categoryIcon('star')).toBe('star');
     expect(categoryIcon('')).toBe('forum');
     expect(categoryIcon(undefined)).toBe('forum');
+  });
+});
+
+describe('sortMessages', () => {
+  test('du plus ancien au plus récent, sans muter l\'entrée', () => {
+    const input = [
+      { id: 'b', created: { $date: '2026-10-02T10:00:00Z' } },
+      { id: 'a', created: '2026-10-01T10:00:00Z' },
+    ];
+    expect(sortMessages(input).map((m) => m.id)).toEqual(['a', 'b']);
+    expect(input[0].id).toBe('b');
   });
 });

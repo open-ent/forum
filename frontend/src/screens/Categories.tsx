@@ -1,9 +1,11 @@
+import { useEdificeClient, useHasWorkflow } from '@open-ent/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 import { api } from '../api';
+import { CREATE_CATEGORY_WORKFLOW, hasForumRight } from '../rights';
 import { formatDate, ownerName } from '../utils';
 
 /** Sujets d'une catégorie, affichés sous celle-ci (parité Angular : nom, échanges, activité). */
@@ -30,6 +32,9 @@ function CategorySubjects({ catId }: { catId: string }) {
 export function Categories() {
   const { t } = useTranslation(['forum', 'common']);
   const qc = useQueryClient();
+  const { user } = useEdificeClient();
+  const me = { userId: (user as { userId?: string } | undefined)?.userId ?? '', groupsIds: (user as { groupsIds?: string[] } | undefined)?.groupsIds };
+  const canCreate = useHasWorkflow(CREATE_CATEGORY_WORKFLOW) === true;
   const { data, isLoading, isError } = useQuery({
     queryKey: ['forum', 'categories'],
     queryFn: api.getCategories,
@@ -62,7 +67,7 @@ export function Categories() {
     <div>
       <div className="d-flex align-items-center justify-content-between mb-16">
         <h1 className="m-0">{t('forum.title')}</h1>
-        {!creating && (
+        {!creating && canCreate && (
           <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
             {t('forum.category.new')}
           </button>
@@ -85,9 +90,14 @@ export function Categories() {
             {t('forum.category.edit.finish')}
           </button>
           <button type="button" className="btn btn-secondary" onClick={() => setCreating(false)}>
-            {t('forum.category.share.return')}
+            {t('forum.cancel', { defaultValue: 'Annuler' })}
           </button>
         </form>
+      )}
+      {deleteMut.isError && (
+        <div className="alert alert-warning" role="alert" data-forum-error>
+          {t('forum.error.forbidden', { defaultValue: "L'action a échoué (droit insuffisant ou erreur du serveur)." })}
+        </div>
       )}
       {createMut.isError && (
         <div className="alert alert-warning" role="alert">
@@ -125,20 +135,22 @@ export function Categories() {
               </div>
               <CategorySubjects catId={cat._id} />
             </div>
-            <button
-              type="button"
-              className="btn btn-link p-0 text-danger"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    t('forum.confirm.delete.category', { defaultValue: 'Supprimer cette catégorie ?' }),
+            {hasForumRight(cat, me, 'manager') && (
+              <button
+                type="button"
+                className="btn btn-link p-0 text-danger"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      t('forum.confirm.delete.category', { defaultValue: 'Supprimer cette catégorie ?' }),
+                    )
                   )
-                )
-                  deleteMut.mutate(cat._id);
-              }}
-            >
-              {t('forum.delete', { defaultValue: 'Supprimer' })}
-            </button>
+                    deleteMut.mutate(cat._id);
+                }}
+              >
+                {t('forum.delete', { defaultValue: 'Supprimer' })}
+              </button>
+            )}
           </li>
         ))}
       </ul>

@@ -1,3 +1,4 @@
+import { useEdificeClient } from '@open-ent/react';
 import { Editor, EditorRef } from '@open-ent/react/editor';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useRef, useState } from 'react';
@@ -5,13 +6,16 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 
 import { api } from '../api';
-import { formatDate, ownerName } from '../utils';
+import { canEditMessage, hasForumRight } from '../rights';
+import { formatDateTime, ownerName, sortMessages } from '../utils';
 
 /** Écran sujet : fil de messages + réponse + édition/suppression de message. */
 export function Subject() {
   const { catId = '', subId = '' } = useParams();
   const { t } = useTranslation(['forum', 'common']);
   const qc = useQueryClient();
+  const { user } = useEdificeClient();
+  const me = { userId: (user as { userId?: string } | undefined)?.userId ?? '', groupsIds: (user as { groupsIds?: string[] } | undefined)?.groupsIds };
   const messagesKey = ['forum', 'category', catId, 'subject', subId, 'messages'];
 
   const messagesQuery = useQuery({
@@ -19,6 +23,13 @@ export function Subject() {
     queryFn: () => api.getMessages(catId, subId),
     enabled: !!catId && !!subId,
   });
+
+  // Droits sur la catégorie et état du sujet (verrouillé = pas de réponse).
+  const categoryQuery = useQuery({ queryKey: ['forum', 'category', catId], queryFn: () => api.getCategory(catId), enabled: !!catId });
+  const subjectsQuery = useQuery({ queryKey: ['forum', 'category', catId, 'subjects'], queryFn: () => api.getSubjects(catId), enabled: !!catId });
+  const subject = subjectsQuery.data?.find((s) => s._id === subId);
+  const canContrib = hasForumRight(categoryQuery.data, me, 'contrib');
+  const locked = !!subject?.locked;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: messagesKey });
 
@@ -62,13 +73,20 @@ export function Subject() {
     if (!replyEmpty) replyMut.mutate();
   };
 
-  const messages = messagesQuery.data ?? [];
+  const messages = sortMessages(messagesQuery.data ?? []);
 
   return (
     <div>
       <p>
         <Link to={`/view/${catId}`}>← {t('forum.back.to.subjects')}</Link>
       </p>
+      {(categoryQuery.data || subject) && (
+        <h1 className="mb-16">
+          {locked ? '🔒 ' : ''}
+          {subject?.title ?? ''}
+          {categoryQuery.data && <small className="text-muted" style={{ fontSize: 14 }}> · {categoryQuery.data.name}</small>}
+        </h1>
+      )}
 
       {messagesQuery.isLoading && <p>{t('forum.loading', { defaultValue: 'Chargement…' })}</p>}
       {messagesQuery.isError && (
@@ -89,9 +107,12 @@ export function Subject() {
               <div className="text-muted mb-4" style={{ fontSize: 13 }}>
                 {ownerName(msg.owner) && <strong>{ownerName(msg.owner)}</strong>}
                 {' · '}
-                {formatDate(msg.modified ?? msg.created)}
+                {formatDateTime(msg.created)}
+                {msg.modified && msg.modified !== msg.created && (
+                  <span> · {t('forum.message.modified', { defaultValue: 'modifié le' })} {formatDateTime(msg.modified)}</span>
+                )}
               </div>
-              {editing !== msg._id && (
+              {editing !== msg._id && canEditMessage(categoryQuery.data, me, msg) && (
                 <div className="d-flex gap-8">
                   <button
                     type="button"
@@ -133,7 +154,7 @@ export function Subject() {
                     {t('forum.category.edit.finish')}
                   </button>
                   <button type="button" className="btn btn-secondary" onClick={() => setEditing(null)}>
-                    {t('forum.category.share.return')}
+                    {t('forum.cancel', { defaultValue: 'Annuler' })}
                   </button>
                 </div>
               </div>
@@ -144,7 +165,13 @@ export function Subject() {
         ))}
       </ul>
 
-      {/* Répondre au sujet */}
+      {/* Répondre au sujet : réservé aux contributeurs, et fermé quand le sujet est verrouillé */}
+      {locked && (
+        <p className="text-muted" role="status" data-forum-locked>
+          {t('forum.subject.locked', { defaultValue: 'Ce sujet est verrouillé : les réponses sont fermées.' })}
+        </p>
+      )}
+      {canContrib && !locked && (
       <form onSubmit={onReply}>
         <label htmlFor="forum-reply" className="fw-bold d-block mb-8">
           {t('forum.reply', { defaultValue: 'Répondre' })}
@@ -169,6 +196,7 @@ export function Subject() {
           </div>
         )}
       </form>
+      )}
     </div>
   );
 }

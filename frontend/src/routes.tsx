@@ -1,12 +1,9 @@
-import { RouteObject, createBrowserRouter } from 'react-router-dom';
+import { RouteObject, createHashRouter } from 'react-router-dom';
 
 import { Categories } from './screens/Categories';
 import { Category } from './screens/Category';
 import { Root } from './screens/Root';
 import { Subject } from './screens/Subject';
-
-// Réécrit à la racine du module (`/forum` en prod). En embarqué/dev, racine `/`.
-export const basename = import.meta.env.PROD ? '/forum' : '/';
 
 export const routes: RouteObject[] = [
   {
@@ -20,4 +17,7 @@ export const routes: RouteObject[] = [
   },
 ];
 
-export const router = createBrowserRouter(routes, { basename });
+// Routeur à fragment : l'app est servie sous `/forum` (route serveur unique `@Get("")`), le routage se fait dans
+// `/forum#/…` — comme l'AngularJS (`#/view/:catId`). Un routeur par chemin donnait un 404 au rechargement (F5) d'une
+// catégorie ou d'un sujet, et cassait les liens `#/view/…` venus d'ailleurs.
+export const router = createHashRouter(routes);

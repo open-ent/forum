@@ -9,6 +9,8 @@ export interface Category {
   modified?: { $date: string } | string;
   created?: { $date: string } | string;
   nbSubjects?: number;
+  /** Partages : une entrée par utilisateur ou groupe, avec ses droits (`…|updateCategory: true`…). */
+  shared?: Array<Record<string, unknown> & { userId?: string; groupId?: string }>;
 }
 
 export interface Subject {
@@ -18,6 +20,8 @@ export interface Subject {
   modified?: { $date: string } | string;
   created?: { $date: string } | string;
   nbMessages?: number;
+  /** Sujet verrouillé : plus de réponse possible (verrou posé par un modérateur). */
+  locked?: boolean;
 }
 
 export interface Message {
@@ -123,8 +127,13 @@ export const updateCategory = async (catId: string, data: Partial<Category>): Pr
     }),
   );
 
+/** Une suppression refusée (401/403) ou en erreur lève : avant, elle était prise pour un succès. */
+const okOrThrow = (res: Response) => {
+  if (!res.ok) throw new Error(String(res.status));
+};
+
 export const deleteCategory = async (catId: string): Promise<void> => {
-  await fetch(`/forum/category/${catId}`, { ...base, method: 'DELETE' });
+  okOrThrow(await fetch(`/forum/category/${catId}`, { ...base, method: 'DELETE' }));
 };
 
 export const updateSubject = async (
@@ -142,7 +151,7 @@ export const updateSubject = async (
   );
 
 export const deleteSubject = async (catId: string, subId: string): Promise<void> => {
-  await fetch(`/forum/category/${catId}/subject/${subId}`, { ...base, method: 'DELETE' });
+  okOrThrow(await fetch(`/forum/category/${catId}/subject/${subId}`, { ...base, method: 'DELETE' }));
 };
 
 export const updateMessage = async (
@@ -165,10 +174,12 @@ export const deleteMessage = async (
   subId: string,
   msgId: string,
 ): Promise<void> => {
-  await fetch(`/forum/category/${catId}/subject/${subId}/message/${msgId}`, {
-    ...base,
-    method: 'DELETE',
-  });
+  okOrThrow(
+    await fetch(`/forum/category/${catId}/subject/${subId}/message/${msgId}`, {
+      ...base,
+      method: 'DELETE',
+    }),
+  );
 };
 
 export const getShare = async (catId: string): Promise<ShareJson> =>

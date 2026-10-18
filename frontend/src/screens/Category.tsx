@@ -1,9 +1,11 @@
+import { useEdificeClient } from '@open-ent/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 
 import { api } from '../api';
+import { hasForumRight } from '../rights';
 import { formatDate, ownerName } from '../utils';
 import { ShareDialog } from './ShareDialog';
 
@@ -12,6 +14,8 @@ export function Category() {
   const { catId = '' } = useParams();
   const { t } = useTranslation(['forum', 'common']);
   const qc = useQueryClient();
+  const { user } = useEdificeClient();
+  const me = { userId: (user as { userId?: string } | undefined)?.userId ?? '', groupsIds: (user as { groupsIds?: string[] } | undefined)?.groupsIds };
 
   const categoryQuery = useQuery({
     queryKey: ['forum', 'category', catId],
@@ -60,7 +64,7 @@ export function Category() {
   const [editingSub, setEditingSub] = useState<string | null>(null);
   const [subTitle, setSubTitle] = useState('');
   const renameSubMut = useMutation({
-    mutationFn: (subId: string) => api.updateSubject(catId, subId, { title: subTitle.trim() }),
+    mutationFn: (subId: string) => api.updateSubject(catId, subId, { title: subTitle.trim(), locked: subjectsQuery.data?.find((s) => s._id === subId)?.locked ?? false }),
     onSuccess: () => {
       setEditingSub(null);
       qc.invalidateQueries({ queryKey: subjectsKey });
@@ -68,6 +72,15 @@ export function Category() {
   });
 
   const [sharing, setSharing] = useState(false);
+  const canManage = hasForumRight(categoryQuery.data, me, 'manager');
+  const canContrib = hasForumRight(categoryQuery.data, me, 'contrib');
+  const canPublish = hasForumRight(categoryQuery.data, me, 'publish');
+  // Le verrou est posé/levé par un modérateur (droit « publish ») : on le renvoie à chaque modification de titre,
+  // sinon un renommage le ferait sauter.
+  const lockMut = useMutation({
+    mutationFn: (v: { subId: string; title: string; locked: boolean }) => api.updateSubject(catId, v.subId, { title: v.title, locked: v.locked }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: subjectsKey }),
+  });
 
   const subjects = subjectsQuery.data ?? [];
 
@@ -99,32 +112,38 @@ export function Category() {
               {t('forum.category.edit.finish')}
             </button>
             <button type="button" className="btn btn-secondary" onClick={() => setEditingCat(false)}>
-              {t('forum.category.share.return')}
+              {t('forum.cancel', { defaultValue: 'Annuler' })}
             </button>
           </form>
         ) : (
           <div className="d-flex align-items-center gap-12">
             <h1 className="m-0">{categoryQuery.data?.name ?? t('forum.category')}</h1>
-            <button
-              type="button"
-              className="btn btn-link p-0"
-              onClick={() => {
-                setCatName(categoryQuery.data?.name ?? '');
-                setEditingCat(true);
-              }}
-            >
-              {t('forum.category.edit', { defaultValue: 'Renommer' })}
-            </button>
+            {canManage && (
+              <button
+                type="button"
+                className="btn btn-link p-0"
+                onClick={() => {
+                  setCatName(categoryQuery.data?.name ?? '');
+                  setEditingCat(true);
+                }}
+              >
+                {t('forum.category.edit', { defaultValue: 'Renommer' })}
+              </button>
+            )}
           </div>
         )}
         {!creating && !editingCat && (
           <div className="d-flex gap-8">
-            <button type="button" className="btn btn-secondary" onClick={() => setSharing(true)}>
-              {t('forum.category.share', { defaultValue: 'Partager' })}
-            </button>
-            <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
-              {t('forum.subject.new', { defaultValue: 'Nouveau sujet' })}
-            </button>
+            {canManage && (
+              <button type="button" className="btn btn-secondary" onClick={() => setSharing(true)}>
+                {t('forum.category.share', { defaultValue: 'Partager' })}
+              </button>
+            )}
+            {canContrib && (
+              <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+                {t('forum.subject.new', { defaultValue: 'Nouveau sujet' })}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -145,11 +164,16 @@ export function Category() {
             {t('forum.category.edit.finish')}
           </button>
           <button type="button" className="btn btn-secondary" onClick={() => setCreating(false)}>
-            {t('forum.category.share.return')}
+            {t('forum.cancel', { defaultValue: 'Annuler' })}
           </button>
         </form>
       )}
 
+      {(deleteSubjectMut.isError || renameSubMut.isError || renameCatMut.isError || createMut.isError || lockMut.isError) && (
+        <div className="alert alert-warning" role="alert" data-forum-error>
+          {t('forum.error.forbidden', { defaultValue: "L'action a échoué (droit insuffisant ou erreur du serveur)." })}
+        </div>
+      )}
       {subjectsQuery.isLoading && <p>{t('forum.loading', { defaultValue: 'Chargement…' })}</p>}
       {subjectsQuery.isError && (
         <div className="alert alert-warning" role="alert">
@@ -186,7 +210,7 @@ export function Category() {
                   {t('forum.category.edit.finish')}
                 </button>
                 <button type="button" className="btn btn-secondary" onClick={() => setEditingSub(null)}>
-                  {t('forum.category.share.return')}
+                  {t('forum.cancel', { defaultValue: 'Annuler' })}
                 </button>
               </form>
             ) : (
@@ -197,6 +221,7 @@ export function Category() {
                     className="fw-bold"
                     style={{ fontSize: 17 }}
                   >
+                    {sub.locked ? '🔒 ' : ''}
                     {sub.title}
                   </Link>
                   <div className="text-muted" style={{ fontSize: 13 }}>
@@ -209,7 +234,15 @@ export function Category() {
                     {formatDate(sub.modified ?? sub.created)}
                   </div>
                 </div>
+                {canPublish && (
                 <div className="d-flex gap-8">
+                  <button
+                    type="button"
+                    className="btn btn-link p-0"
+                    onClick={() => lockMut.mutate({ subId: sub._id, title: sub.title, locked: !sub.locked })}
+                  >
+                    {sub.locked ? t('forum.subject.unlock', { defaultValue: 'Déverrouiller' }) : t('forum.subject.lock', { defaultValue: 'Verrouiller' })}
+                  </button>
                   <button
                     type="button"
                     className="btn btn-link p-0"
@@ -218,7 +251,7 @@ export function Category() {
                       setEditingSub(sub._id);
                     }}
                   >
-                    {t('forum.subject.edit', { defaultValue: 'Modifier' })}
+                    {t('forum.subject.edit.title', { defaultValue: 'Renommer le sujet' })}
                   </button>
                   <button
                     type="button"
@@ -235,6 +268,7 @@ export function Category() {
                     {t('forum.delete', { defaultValue: 'Supprimer' })}
                   </button>
                 </div>
+                )}
               </>
             )}
           </li>

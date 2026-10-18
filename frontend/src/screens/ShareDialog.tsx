@@ -234,7 +234,7 @@ export function ShareDialog({ catId, onClose }: { catId: string; onClose: () => 
 
             <div className="d-flex justify-content-end gap-8 mt-16">
               <button type="button" className="btn btn-secondary" onClick={onClose}>
-                {t('forum.category.share.return', { defaultValue: 'Annuler' })}
+                {t('forum.cancel', { defaultValue: 'Annuler' })}
               </button>
               <button type="button" className="btn btn-primary" disabled={saveMut.isPending} onClick={() => saveMut.mutate()}>
                 {t('forum.category.share.submit', { defaultValue: 'Partager' })}
