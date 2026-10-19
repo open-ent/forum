@@ -1,4 +1,4 @@
-import { useEdificeClient, useHasWorkflow } from '@open-ent/react';
+import { MediaLibrary, useEdificeClient, useHasWorkflow, useMediaLibrary } from '@open-ent/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +32,10 @@ function CategorySubjects({ catId }: { catId: string }) {
 export function Categories() {
   const { t } = useTranslation(['forum', 'common']);
   const qc = useQueryClient();
-  const { user } = useEdificeClient();
+  const { user, appCode } = useEdificeClient();
+  // Icône de la catégorie, choisie dans la médiathèque (parité AngularJS `image-select`).
+  const { ref: mediaLibraryRef, ...mediaLibraryHandlers } = useMediaLibrary();
+  const [icon, setIcon] = useState('');
   const me = { userId: (user as { userId?: string } | undefined)?.userId ?? '', groupsIds: (user as { groupsIds?: string[] } | undefined)?.groupsIds };
   const canCreate = useHasWorkflow(CREATE_CATEGORY_WORKFLOW) === true;
   const { data, isLoading, isError } = useQuery({
@@ -44,9 +47,10 @@ export function Categories() {
   const [name, setName] = useState('');
 
   const createMut = useMutation({
-    mutationFn: () => api.createCategory({ name: name.trim() }),
+    mutationFn: () => api.createCategory({ name: name.trim(), icon }),
     onSuccess: () => {
       setName('');
+      setIcon('');
       setCreating(false);
       qc.invalidateQueries({ queryKey: ['forum', 'categories'] });
     },
@@ -86,6 +90,12 @@ export function Categories() {
             aria-label={t('forum.category.new')}
             autoFocus
           />
+          <div className="d-flex align-items-center gap-8">
+            {icon ? <img src={icon} alt="" data-category-icon style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }} /> : null}
+            <button type="button" className="btn btn-secondary" onClick={() => mediaLibraryRef.current?.show('image')}>
+              {icon ? t('forum.category.icon.change', { defaultValue: "Changer l'icône" }) : t('forum.category.icon.choose', { defaultValue: 'Choisir une icône' })}
+            </button>
+          </div>
           <button type="submit" className="btn btn-primary" disabled={!name.trim() || createMut.isPending}>
             {t('forum.category.edit.finish')}
           </button>
@@ -120,7 +130,9 @@ export function Categories() {
       <ul className="list-unstyled">
         {categories.map((cat) => (
           <li key={cat._id} className="py-12 border-bottom d-flex justify-content-between align-items-start">
-            <div>
+            <div className="d-flex gap-12">
+              {cat.icon ? <img src={cat.icon} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }} /> : null}
+              <div>
               <Link to={`/view/${cat._id}`} className="fw-bold" style={{ fontSize: 18 }}>
                 {cat.name}
               </Link>
@@ -134,6 +146,7 @@ export function Categories() {
                 {formatDate(cat.modified ?? cat.created)}
               </div>
               <CategorySubjects catId={cat._id} />
+              </div>
             </div>
             {hasForumRight(cat, me, 'manager') && (
               <button
@@ -154,6 +167,18 @@ export function Categories() {
           </li>
         ))}
       </ul>
+      <MediaLibrary
+        appCode={appCode}
+        ref={mediaLibraryRef}
+        visibility="protected"
+        {...mediaLibraryHandlers}
+        onSuccess={(result: unknown) => {
+          const file = (Array.isArray(result) ? result[0] : result) as { _id?: string; id?: string } | undefined;
+          const id = file?._id ?? file?.id;
+          if (id) setIcon(`/workspace/document/${id}`);
+          mediaLibraryRef.current?.hide();
+        }}
+      />
     </div>
   );
 }

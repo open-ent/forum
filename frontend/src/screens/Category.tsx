@@ -1,6 +1,7 @@
 import { useEdificeClient } from '@open-ent/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FormEvent, useState } from 'react';
+import { Editor, EditorRef } from '@open-ent/react/editor';
+import { FormEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 
@@ -31,10 +32,19 @@ export function Category() {
   const subjectsKey = ['forum', 'category', catId, 'subjects'];
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
+  // Un sujet naît avec son premier message (parité AngularJS `new-subject` : titre ET message obligatoires) ;
+  // avant, le sujet créé en React restait vide.
+  const firstMessageRef = useRef<EditorRef>(null);
+  const [firstMessageEmpty, setFirstMessageEmpty] = useState(true);
   const createMut = useMutation({
-    mutationFn: () => api.createSubject(catId, { title: title.trim() }),
+    mutationFn: async () => {
+      const content = (firstMessageRef.current?.getContent('html') as string) ?? '';
+      const subject = await api.createSubject(catId, { title: title.trim() });
+      await api.postMessage(catId, subject._id, { content });
+    },
     onSuccess: () => {
       setTitle('');
+      setFirstMessageEmpty(true);
       setCreating(false);
       qc.invalidateQueries({ queryKey: subjectsKey });
     },
@@ -45,7 +55,7 @@ export function Category() {
   });
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (title.trim()) createMut.mutate();
+    if (title.trim() && !firstMessageEmpty) createMut.mutate();
   };
 
   // Édition du NOM de la catégorie (icône conservée).
@@ -149,10 +159,10 @@ export function Category() {
       </div>
 
       {creating && (
-        <form className="d-flex gap-8 mb-16" onSubmit={onSubmit}>
+        <form className="mb-16" onSubmit={onSubmit}>
           <input
             type="text"
-            className="form-control"
+            className="form-control mb-8"
             style={{ maxWidth: 420 }}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -160,12 +170,27 @@ export function Category() {
             aria-label={t('forum.subject.new', { defaultValue: 'Nouveau sujet' })}
             autoFocus
           />
-          <button type="submit" className="btn btn-primary" disabled={!title.trim() || createMut.isPending}>
-            {t('forum.category.edit.finish')}
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={() => setCreating(false)}>
-            {t('forum.cancel', { defaultValue: 'Annuler' })}
-          </button>
+          <label htmlFor="forum-first-message" className="fw-bold d-block mb-8">
+            {t('forum.subject.message', { defaultValue: 'Message' })}
+          </label>
+          <div className="mb-8">
+            <Editor
+              id="forum-first-message"
+              ref={firstMessageRef}
+              content=""
+              mode="edit"
+              visibility="protected"
+              onContentChange={({ editor }) => setFirstMessageEmpty(editor.isEmpty)}
+            />
+          </div>
+          <div className="d-flex gap-8">
+            <button type="submit" className="btn btn-primary" disabled={!title.trim() || firstMessageEmpty || createMut.isPending}>
+              {t('forum.category.edit.finish')}
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={() => setCreating(false)}>
+              {t('forum.cancel', { defaultValue: 'Annuler' })}
+            </button>
+          </div>
         </form>
       )}
 
