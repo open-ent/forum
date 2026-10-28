@@ -118,5 +118,6 @@
   "forum.subject.lock": "Verrouiller",
   "forum.subject.unlock": "Déverrouiller",
   "forum.message.modified": "modifié le",
-  "close": "Fermer"
+  "close": "Fermer",
+  "forum.selected.count": "[[count]] sujet(s) sélectionné(s)"
 }

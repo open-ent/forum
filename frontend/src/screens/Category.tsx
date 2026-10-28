@@ -82,6 +82,23 @@ export function Category() {
   });
 
   const [sharing, setSharing] = useState(false);
+  // Sélection multiple de sujets pour une suppression groupée (parité AngularJS : cases à cocher + « Supprimer »).
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const toggleChecked = (id: string) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const deleteManyMut = useMutation({
+    mutationFn: async (ids: string[]) => {
+      for (const id of ids) await api.deleteSubject(catId, id);
+    },
+    onSettled: () => {
+      setChecked(new Set());
+      qc.invalidateQueries({ queryKey: subjectsKey });
+    },
+  });
   const canManage = hasForumRight(categoryQuery.data, me, 'manager');
   const canContrib = hasForumRight(categoryQuery.data, me, 'contrib');
   const canPublish = hasForumRight(categoryQuery.data, me, 'publish');
@@ -194,7 +211,22 @@ export function Category() {
         </form>
       )}
 
-      {(deleteSubjectMut.isError || renameSubMut.isError || renameCatMut.isError || createMut.isError || lockMut.isError) && (
+      {canPublish && checked.size > 0 && (
+        <div className="d-flex gap-8 align-items-center mb-12" role="toolbar" data-forum-selection>
+          <span role="status">{t('forum.selected.count', { defaultValue: '[[count]] sujet(s) sélectionné(s)', count: checked.size })}</span>
+          <button
+            type="button"
+            className="btn btn-danger btn-sm"
+            disabled={deleteManyMut.isPending}
+            onClick={() => {
+              if (window.confirm(t('forum.confirm.delete.subjects', { defaultValue: 'Supprimer les sujets sélectionnés ?' }))) deleteManyMut.mutate([...checked]);
+            }}
+          >
+            {t('forum.delete', { defaultValue: 'Supprimer' })} ({checked.size})
+          </button>
+        </div>
+      )}
+      {(deleteManyMut.isError || deleteSubjectMut.isError || renameSubMut.isError || renameCatMut.isError || createMut.isError || lockMut.isError) && (
         <div className="alert alert-warning" role="alert" data-forum-error>
           {t('forum.error.forbidden', { defaultValue: "L'action a échoué (droit insuffisant ou erreur du serveur)." })}
         </div>
@@ -213,7 +245,10 @@ export function Category() {
 
       <ul className="list-unstyled">
         {subjects.map((sub) => (
-          <li key={sub._id} className="py-12 border-bottom d-flex justify-content-between align-items-start">
+          <li key={sub._id} className="py-12 border-bottom d-flex justify-content-between align-items-start" data-subject-id={sub._id}>
+            {canPublish && editingSub !== sub._id && (
+              <input type="checkbox" className="me-12 mt-4" aria-label={sub.title} checked={checked.has(sub._id)} onChange={() => toggleChecked(sub._id)} />
+            )}
             {editingSub === sub._id ? (
               <form
                 className="d-flex gap-8 flex-grow-1"

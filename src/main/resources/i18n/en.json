@@ -118,5 +118,6 @@
   "forum.subject.lock": "Lock",
   "forum.subject.unlock": "Unlock",
   "forum.message.modified": "edited on",
-  "close": "Close"
+  "close": "Close",
+  "forum.selected.count": "[[count]] topic(s) selected"
 }
