@@ -33,5 +33,25 @@
   "bugs": {
     "url": "https://github.com/OPEN-ENT-NG/forum/issues"
   },
-  "homepage": "https://github.com/OPEN-ENT-NG/forum"
+  "homepage": "https://github.com/OPEN-ENT-NG/forum",
+  "overrides": {
+    "loader-utils": "^1.4.2",
+    "minimist": "^1.2.8",
+    "sha.js": "^2.4.12",
+    "handlebars": "^4.7.10",
+    "pbkdf2": "^3.1.3",
+    "cipher-base": "^1.0.5",
+    "elliptic": "^6.6.1",
+    "globule": "^1.3.4"
+  },
+  "resolutions": {
+    "loader-utils": "^1.4.2",
+    "minimist": "^1.2.8",
+    "sha.js": "^2.4.12",
+    "handlebars": "^4.7.10",
+    "pbkdf2": "^3.1.3",
+    "cipher-base": "^1.0.5",
+    "elliptic": "^6.6.1",
+    "globule": "^1.3.4"
+  }
 }
